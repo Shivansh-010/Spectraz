@@ -131,4 +131,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun executeCommandInTerminal(command: String) {
+        // You can replace this with your own logic for executing the command in the terminal
+        Log.d("MainActivity", "Executing command: $command")
+        TerminalNative.sendToShell(command)
+
+       // // Optionally update the UI with the executed command or its output
+       // terminalOutputList.add("Executing: $command")
+       // terminalAdapter.notifyItemInserted(terminalOutputList.size - 1)
+       // outputView.scrollToPosition(terminalOutputList.size - 1)
+    }
 }
