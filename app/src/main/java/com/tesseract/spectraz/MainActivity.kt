@@ -12,10 +12,11 @@ import android.content.Context
 import android.text.InputType
 import androidx.core.app.ActivityCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
 
-    private val PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 1
+    // private val PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 1
 
     private lateinit var outputView: TextView
     private lateinit var inputField: EditText
@@ -114,8 +115,43 @@ class MainActivity : AppCompatActivity() {
         executionManager = ExecutionManager(this)
 
         executionManager.onFinalCommand = { finalCmd ->
-            // Execute final command or update the UI with it
-            Log.d("MainActivity", "Final Command: $finalCmd")
+            try {
+                // Parse the final command JSON
+                val jsonObject = JSONObject(finalCmd)
+
+                // Check if "consolidated_commands" exists in the response
+                val consolidatedCommandsArray = jsonObject.optJSONArray("consolidated_commands")
+
+                if (consolidatedCommandsArray != null && consolidatedCommandsArray.length() > 0) {
+                    // Case 1: Consolidated commands present
+                    for (i in 0 until consolidatedCommandsArray.length()) {
+                        val consolidatedCommand = consolidatedCommandsArray.getJSONObject(i)
+                        val command = consolidatedCommand.optString("commands", "")
+
+                        if (command.isNotEmpty()) {
+                            // Execute the consolidated command in the terminal
+                            executeCommandInTerminal(command)
+                        }
+                    }
+                } else {
+                    // Case 2: Only step commands present
+                    val stepsArray = jsonObject.optJSONArray("steps")
+
+                    if (stepsArray != null) {
+                        for (i in 0 until stepsArray.length()) {
+                            val step = stepsArray.getJSONObject(i)
+                            val stepCommand = step.optString("command", "")
+
+                            if (stepCommand.isNotEmpty()) {
+                                // Execute the step command in the terminal
+                                executeCommandInTerminal(stepCommand)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error parsing final command JSON: ${e.message}")
+            }
         }
 
         executionManager.configureModelsFromFile(
