@@ -16,7 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="#0f0"
-            android:textSize="10sp"
+            android:textSize="14sp"
             android:lineSpacingExtra="4dp"
             android:typeface="monospace"
             android:textIsSelectable="true"
@@ -34,9 +34,25 @@
         android:imeOptions="actionDone"
         android:inputType="text" />
 
-    <Button
-        android:id="@+id/sendButton"
+    <!-- New LinearLayout to hold the buttons side by side -->
+    <LinearLayout
+        android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Send Command" />
+        android:paddingTop="8dp">
+
+        <Button
+            android:id="@+id/sendButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Send Command" />
+
+        <!-- New Button to send message to AI -->
+        <Button
+            android:id="@+id/sendAiButton"
+            android:layout_width="198dp"
+            android:layout_height="wrap_content"
+            android:text="Send to AI" />
+    </LinearLayout>
 </LinearLayout>

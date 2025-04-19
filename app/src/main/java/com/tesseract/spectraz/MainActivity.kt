@@ -19,6 +19,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var inputField: EditText
     private lateinit var sendButton: Button
     private lateinit var scrollView: ScrollView
+    private lateinit var sendAiButton: Button
 
     private lateinit var executionManager: ExecutionManager
     private lateinit var terminalWrapper: TerminalWrapper
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         inputField = findViewById(R.id.inputField)
         sendButton = findViewById(R.id.sendButton)
         scrollView = findViewById(R.id.scrollView)
+        sendAiButton = findViewById(R.id.sendAiButton)
 
         // Observe terminal output changes
         terminalWrapper.liveHistory.observe(this, { history ->
@@ -56,6 +58,18 @@ class MainActivity : AppCompatActivity() {
             if (command.isNotEmpty()) {
                 terminalWrapper.runCommand(command)
                 inputField.setText("")
+                inputField.requestFocus()
+            }
+        }
+
+        sendAiButton.setOnClickListener {
+            val userInput = inputField.text.toString()
+            if (userInput.isNotEmpty()) {
+                // Send the input to the AI for processing
+                executionManager.processQuery(userInput)
+
+                inputField.setText("") // Clear the input field after sending
+                inputField.requestFocus() // Request focus back on the input field
             }
         }
     }
@@ -141,9 +155,6 @@ class MainActivity : AppCompatActivity() {
         executionManager.configureModelsFromFile(
             "/storage/emulated/0/Documents/Obsidian_Live/_KnowledgeBase/DataFiles/ModelConfigAndroid.md"
         )
-
-        // For testing, send a command on create.
-        executionManager.processQuery("use ImageMagick to resize image.png to 200x200 and then move it to /storage/emulated/0/Pictures/")
 
         executionManager.onAskUserRequest = { question ->
             showUserInputDialog(this, question) { userInput ->
