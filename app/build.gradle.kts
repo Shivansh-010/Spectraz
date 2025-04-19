@@ -50,10 +50,12 @@ android {
 }
 
 dependencies {
-
+    implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("androidx.core:core-ktx:1.7.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation(libs.androidx.constraintlayout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
