@@ -93,6 +93,6 @@ class MainActivity : AppCompatActivity() {
         )
 
         // For testing, send a command on create.
-        executionManager.processQuery("Test Command: Hello World")
+        executionManager.processQuery("use ImageMagick to resize image.png to 200x200 and then move it to /storage/emulated/0/Pictures/")
     }
 }

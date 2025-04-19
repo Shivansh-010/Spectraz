@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import java.io.File
 import com.tesseract.spectraz.RootUtils
+import com.tesseract.spectraz.RootUtils.readFileWithRoot
+import org.json.JSONObject
 
 /**
  * ExecutionManager routes queries through the model pipeline.
@@ -23,44 +25,72 @@ class ExecutionManager(private val context: Context) {
      * For example, you might execute the command or update the UI.
      */
     var onFinalCommand: ((String) -> Unit)? = null
-
-    // Internal LiveData objects for each model's response.
-    // (Assumes each AIModelBase-derived class defines onResponseReceived as MutableLiveData<String>.)
-    // The chaining is set up in the init block below.
     init {
 
-        Log.d("BOOTCHECK", "=============================EXECUTION MANAGER INIT=============================")
+        Log.d("ExecutionManager", "EXECUTION MANAGER INIT")
 
-        // When QueryStepper returns output, log and pass to Tagger.
+        // Step 1: QueryStepper to Tagger
         queryStepper.onResponseReceived.observeForever { response ->
             onModelResponse("QueryStepper", response)
+
+            // Optional: clean markdown fences here if needed
             tagger.sendMessage(response)
         }
 
-        // When Tagger returns output, log and pass to CommandGenerator.
+        // Step 2: Tagger to CommandGenerator with Context Injection
         tagger.onResponseReceived.observeForever { response ->
             onModelResponse("Tagger", response)
-            commandGenerator.sendMessage(response)
+
+            try {
+                // Clean markdown fences like ```json and ``` if present
+                val cleanedJson = response.replace("```json", "").replace("```", "").trim()
+
+                val jsonObject = JSONObject(cleanedJson)
+                val stepsArray = jsonObject.getJSONArray("steps")
+
+                for (i in 0 until stepsArray.length()) {
+                    val step = stepsArray.getJSONObject(i)
+                    val tag = step.optString("tag", "")
+                    if (tag.isNotEmpty()) {
+                        // Construct file path
+                        val docPath = "/storage/emulated/0/Documents/Obsidian_Live/_KnowledgeBase/DataFiles/Documentation/$tag.md"
+
+                        // Read file using your root-enabled file reader
+                        val docContent = readFileWithRoot(docPath)
+
+                        // Replace tag with documentation field
+                        step.remove("tag")
+                        step.put("documentation", docContent)
+                    }
+                }
+
+                // Pass modified JSON to CommandGenerator
+                commandGenerator.sendMessage(jsonObject.toString())
+
+            } catch (e: Exception) {
+                Log.e("ExecutionManager", "Error processing Tagger response: ${e.message}")
+            }
         }
 
-        // When CommandGenerator returns output, log and pass to CommandConsolidator.
+        // Step 3: CommandGenerator to CommandConsolidator
         commandGenerator.onResponseReceived.observeForever { response ->
             onModelResponse("CommandGenerator", response)
             commandConsolidator.sendMessage(response)
         }
 
-        // When CommandConsolidator returns output, log and pass to CommandVerifier.
+        // Step 4: CommandConsolidator to CommandVerifier
         commandConsolidator.onResponseReceived.observeForever { response ->
             onModelResponse("CommandConsolidator", response)
             commandVerifier.sendMessage(response)
         }
 
-        // When CommandVerifier returns output, log and deliver final result.
+        // Step 5: Final command output
         commandVerifier.onResponseReceived.observeForever { response ->
             onModelResponse("CommandVerifier", response)
             onFinalCommand?.invoke(response)
         }
     }
+
 
     /**
      * Called each time a model produces output.
