@@ -20,6 +20,11 @@ class ExecutionManager(private val context: Context) {
     val commandConsolidator = CommandConsolidatorModel(context)
     val commandVerifier = CommandVerifierModel(context)
 
+    // for verification failure
+    var verificationFailureReason: String? = null
+
+    var onAskUserRequest: ((String) -> Unit)? = null
+
     /**
      * Callback that is invoked with the final output from the model pipeline.
      * For example, you might execute the command or update the UI.
@@ -41,6 +46,7 @@ class ExecutionManager(private val context: Context) {
         tagger.onResponseReceived.observeForever { response ->
             onModelResponse("Tagger", response)
 
+            // Documentation JSON Injection
             try {
                 // Clean markdown fences like ```json and ``` if present
                 val cleanedJson = response.replace("```json", "").replace("```", "").trim()
@@ -64,7 +70,7 @@ class ExecutionManager(private val context: Context) {
                     }
                 }
 
-                // Pass modified JSON to CommandGenerator
+                // Pass JSON with tool Documentation to CommandGenerator
                 commandGenerator.sendMessage(jsonObject.toString())
 
             } catch (e: Exception) {
@@ -75,8 +81,40 @@ class ExecutionManager(private val context: Context) {
         // Step 3: CommandGenerator to CommandConsolidator
         commandGenerator.onResponseReceived.observeForever { response ->
             onModelResponse("CommandGenerator", response)
-            commandConsolidator.sendMessage(response)
+
+            try {
+                // Clean markdown fences if needed
+                val cleanedResponse = response.replace("```json", "").replace("```", "").trim()
+
+                // Check for ask_user line
+                val askUserRegex = Regex("""ask_user:\s*(.+)""", RegexOption.IGNORE_CASE)
+                val match = askUserRegex.find(cleanedResponse)
+                if (match != null) {
+                    val userQuery = match.groupValues[1].trim()
+                    Log.d("ExecutionManager", "Model requested user input: $userQuery")
+
+                    // Send user query to UI or handler
+                    onAskUserRequest?.invoke(userQuery)
+                    return@observeForever
+                }
+
+                // Parse JSON and strip documentation
+                val jsonObject = JSONObject(cleanedResponse)
+                val stepsArray = jsonObject.getJSONArray("steps")
+
+                for (i in 0 until stepsArray.length()) {
+                    val step = stepsArray.getJSONObject(i)
+                    step.remove("documentation")
+                }
+
+                // Send cleaned JSON to consolidator
+                commandConsolidator.sendMessage(jsonObject.toString())
+
+            } catch (e: Exception) {
+                Log.e("ExecutionManager", "Error handling CommandGenerator response: ${e.message}")
+            }
         }
+
 
         // Step 4: CommandConsolidator to CommandVerifier
         commandConsolidator.onResponseReceived.observeForever { response ->
@@ -87,7 +125,42 @@ class ExecutionManager(private val context: Context) {
         // Step 5: Final command output
         commandVerifier.onResponseReceived.observeForever { response ->
             onModelResponse("CommandVerifier", response)
-            onFinalCommand?.invoke(response)
+
+            // Clean markdown fences if present
+            val cleanedJson = response.replace("```json", "").replace("```", "").trim()
+
+            try {
+                val jsonObject = JSONObject(cleanedJson)
+                val result = jsonObject.optString("verification_result", "")
+
+                if (result == "success") {
+                    onFinalCommand?.invoke(cleanedJson)
+                } else {
+                    val reason = jsonObject.optString("reason", "Unknown verification failure.")
+                    Log.e("ExecutionManager", "Verification failed: $reason")
+
+                    // Store the reason
+                    verificationFailureReason = reason
+
+                    // Send a correction prompt to the Command Generator
+                    val retryMessage = """
+                        The command you generated has failed verification due to the following reason:
+                        "$verificationFailureReason"
+                    
+                        Please fix the issue and regenerate the correct JSON output for the terminal command steps.
+                    
+                        If you require additional input from the user to resolve the issue, include a line starting with:
+                        ask_user: your question here
+                    """.trimIndent()
+
+
+                    commandGenerator.sendMessage(retryMessage)
+                }
+
+
+            } catch (e: Exception) {
+                Log.e("ExecutionManager", "Error parsing verifier response: ${e.message}")
+            }
         }
     }
 
@@ -178,4 +251,17 @@ class ExecutionManager(private val context: Context) {
         queryStepper.sendMessage(query)
         Log.d("AIModel", "processQuery(query: String")
     }
+
+    // if command generator model asks for user response
+    fun submitUserInputToCommandGenerator(userInput: String) {
+        val formattedInput = """
+        The user has provided the following input in response to your previous request:
+        "$userInput"
+        
+        Please continue by generating the correct JSON output.
+    """.trimIndent()
+
+        commandGenerator.sendMessage(formattedInput)
+    }
+
 }

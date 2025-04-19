@@ -8,7 +8,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
 import android.Manifest
+import android.content.Context
+import android.text.InputType
 import androidx.core.app.ActivityCompat
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class MainActivity : AppCompatActivity() {
 
@@ -80,6 +83,33 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    fun showUserInputDialog(
+        context: Context,
+        question: String,
+        onSubmit: (String) -> Unit
+    ) {
+        val inputEditText = EditText(context).apply {
+            hint = "Enter your response..."
+            inputType = InputType.TYPE_CLASS_TEXT
+            setPadding(40, 20, 40, 20)
+        }
+
+        val dialog = MaterialAlertDialogBuilder(context)
+            .setTitle("CommandGen requested for Your Input")
+            .setMessage(question)
+            .setView(inputEditText)
+            .setPositiveButton("Submit") { _, _ ->
+                val userInput = inputEditText.text.toString().trim()
+                if (userInput.isNotEmpty()) {
+                    onSubmit(userInput)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        dialog.show()
+    }
+
     private fun initExecutionManager() {
         executionManager = ExecutionManager(this)
 
@@ -94,5 +124,11 @@ class MainActivity : AppCompatActivity() {
 
         // For testing, send a command on create.
         executionManager.processQuery("use ImageMagick to resize image.png to 200x200 and then move it to /storage/emulated/0/Pictures/")
+
+        executionManager.onAskUserRequest = { question ->
+            showUserInputDialog(this, question) { userInput ->
+                executionManager.submitUserInputToCommandGenerator(userInput)
+            }
+        }
     }
 }
