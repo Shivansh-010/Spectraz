@@ -6,7 +6,6 @@ import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-
 import android.Manifest
 import android.content.Context
 import android.text.InputType
@@ -16,14 +15,13 @@ import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
 
-    // private val PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 1
-
     private lateinit var outputView: TextView
     private lateinit var inputField: EditText
     private lateinit var sendButton: Button
     private lateinit var scrollView: ScrollView
 
     private lateinit var executionManager: ExecutionManager
+    private lateinit var terminalWrapper: TerminalWrapper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +33,9 @@ class MainActivity : AppCompatActivity() {
 
         Log.d("BOOTCHECK", "MainActivity onCreate")
 
+        // Initialize TerminalWrapper for command execution
+        terminalWrapper = TerminalWrapper()
+
         initExecutionManager()
 
         outputView = findViewById(R.id.outputView)
@@ -42,18 +43,19 @@ class MainActivity : AppCompatActivity() {
         sendButton = findViewById(R.id.sendButton)
         scrollView = findViewById(R.id.scrollView)
 
-        if (TerminalNative.startShell()) {
-            readShellOutput()
-        } else {
-            outputView.append("Failed to start shell\n")
-        }
+        // Observe terminal output changes
+        terminalWrapper.liveHistory.observe(this, { history ->
+            history.forEach { entry ->
+                outputView.append("${entry.command}\n${entry.output}\n")
+                scrollView.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
+            }
+        })
 
         sendButton.setOnClickListener {
             val command = inputField.text.toString()
             if (command.isNotEmpty()) {
-                TerminalNative.sendToShell(command)
+                terminalWrapper.runCommand(command)
                 inputField.setText("")
-                readShellOutput()
             }
         }
     }
@@ -64,24 +66,6 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-    /*      if (requestCode == PERMISSION_REQUEST_READ_EXTERNAL_STORAGE) {
-            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                initExecutionManager()
-            } else {
-                Toast.makeText(this, "Storage permission is required", Toast.LENGTH_SHORT).show()
-            }
-        }*/
-    }
-
-    private fun readShellOutput() {
-        Thread {
-            val output = TerminalNative.readFromShell()
-            runOnUiThread {
-                outputView.append(output + "\n")
-                scrollView.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
-            }
-        }.start()
     }
 
     fun showUserInputDialog(
@@ -171,11 +155,6 @@ class MainActivity : AppCompatActivity() {
     private fun executeCommandInTerminal(command: String) {
         // You can replace this with your own logic for executing the command in the terminal
         Log.d("MainActivity", "Executing command: $command")
-        TerminalNative.sendToShell(command)
-
-       // // Optionally update the UI with the executed command or its output
-       // terminalOutputList.add("Executing: $command")
-       // terminalAdapter.notifyItemInserted(terminalOutputList.size - 1)
-       // outputView.scrollToPosition(terminalOutputList.size - 1)
+        terminalWrapper.runCommand(command)
     }
 }

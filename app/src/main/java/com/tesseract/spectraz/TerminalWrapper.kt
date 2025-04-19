@@ -18,13 +18,19 @@ class TerminalWrapper {
 
     fun runCommand(command: String, asRoot: Boolean = false) {
         try {
+            // Add the command itself to the history first
+            addToHistory(command, "", isError = false)
+
+            // Execute the command
             val fullCommand = if (asRoot) arrayOf("su", "-c", command) else arrayOf("sh", "-c", command)
             val process = Runtime.getRuntime().exec(fullCommand)
 
+            // Read the output and error streams
             val output = process.inputStream.bufferedReader().readText().trim()
             val error = process.errorStream.bufferedReader().readText().trim()
             process.waitFor()
 
+            // Add output or error to the history
             if (output.isNotEmpty()) {
                 addToHistory(command, output, isError = false)
             }
@@ -34,6 +40,7 @@ class TerminalWrapper {
             }
 
         } catch (e: Exception) {
+            // If an exception occurs, add it to the history
             addToHistory(command, "Exception: ${e.message}", isError = true)
         }
     }
@@ -41,11 +48,11 @@ class TerminalWrapper {
     private fun addToHistory(command: String, result: String, isError: Boolean) {
         val entry = TerminalEntry(command, result, isError)
         history.add(entry)
-        _liveHistory.postValue(history.toList())
+        _liveHistory.postValue(history.toList())  // Update the live history
     }
 
     fun clearHistory() {
         history.clear()
-        _liveHistory.postValue(history.toList())
+        _liveHistory.postValue(history.toList())  // Update the live history
     }
 }
