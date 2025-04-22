@@ -188,6 +188,7 @@ class ExecutionManager(private val context: Context) {
 
     fun isValidJson(input: String): Boolean {
         return try {
+            val cleanedJson = input.replace("```json", "").replace("```", "").trim()
             val trimmed = input.trim()
             when {
                 trimmed.startsWith("{") -> JSONObject(trimmed)
