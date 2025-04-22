@@ -7,6 +7,7 @@ import java.io.File
 import com.tesseract.spectraz.RootUtils
 import com.tesseract.spectraz.RootUtils.readFileWithRoot
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 
 /**
@@ -47,13 +48,14 @@ class ExecutionManager(private val context: Context) {
             jsonView.text = lastModelResponse
             onModelResponse("QueryStepper", response)
 
-            if (isValidJson(response)) {
-                tagger.sendMessage(response)
+            // Use cleanAndExtractJson() instead of isValidJson()
+            val cleanJson = cleanAndExtractJson(response)
+            if (cleanJson != null) {
+                tagger.sendMessage(cleanJson)
             } else {
                 Log.w("AIModelPipeline", "Skipping Tagger. Not valid JSON.")
             }
         }
-
 
         // Step 2: Tagger to CommandGenerator with Context Injection
         tagger.onResponseReceived.observeForever { response ->
@@ -186,20 +188,35 @@ class ExecutionManager(private val context: Context) {
         }
     }
 
-    fun isValidJson(input: String): Boolean {
+    fun cleanAndExtractJson(input: String): String? {
+        // Remove Markdown fences
+        val noFences = input
+            .replace(Regex("```json", RegexOption.IGNORE_CASE), "")
+            .replace("```", "")
+            .trimStart()
+
+        // Find where JSON actually begins
+        val start = noFences.indexOfFirst { it == '{' || it == '[' }
+        if (start == -1) return null
+
+        val candidate = noFences.substring(start).trim()
         return try {
-            val cleanedJson = input.replace("```json", "").replace("```", "").trim()
-            val trimmed = input.trim()
             when {
-                trimmed.startsWith("{") -> JSONObject(trimmed)
-                trimmed.startsWith("[") -> JSONArray(trimmed)
-                else -> return false
+                candidate.startsWith("{") -> {
+                    JSONObject(candidate)    // throws if invalid
+                    candidate
+                }
+                candidate.startsWith("[") -> {
+                    JSONArray(candidate)
+                    candidate
+                }
+                else -> null
             }
-            true
-        } catch (e: Exception) {
-            false
+        } catch (e: JSONException) {
+            null
         }
     }
+
 
 
     // called from execution manager to set to UI textbox
