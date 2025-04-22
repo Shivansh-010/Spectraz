@@ -15,7 +15,8 @@ import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var outputView: TextView
+    private lateinit var terminalView: TextView
+    private lateinit var jsonView : TextView
     private lateinit var inputField: EditText
     private lateinit var sendButton: Button
     private lateinit var scrollView: ScrollView
@@ -37,18 +38,20 @@ class MainActivity : AppCompatActivity() {
         // Initialize TerminalWrapper for command execution
         terminalWrapper = TerminalWrapper()
 
-        initExecutionManager()
-
-        outputView = findViewById(R.id.outputView)
+        terminalView = findViewById(R.id.terminalView)
+        jsonView = findViewById(R.id.jsonView)
         inputField = findViewById(R.id.inputField)
         sendButton = findViewById(R.id.sendButton)
         scrollView = findViewById(R.id.scrollView)
         sendAiButton = findViewById(R.id.sendAiButton)
 
+        // After Initializing jsonView
+        initExecutionManager()
+
         // Observe terminal output changes
         terminalWrapper.liveHistory.observe(this, { history ->
             history.forEach { entry ->
-                outputView.append("${entry.command}\n${entry.output}\n")
+                terminalView.append("${entry.command}\n${entry.output}\n")
                 scrollView.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
             }
         })
@@ -111,6 +114,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun initExecutionManager() {
         executionManager = ExecutionManager(this)
+
+        executionManager.setJsonView(jsonView)
 
         executionManager.onFinalCommand = { finalCmd ->
             try {

@@ -2,9 +2,11 @@ package com.tesseract.spectraz
 
 import android.content.Context
 import android.util.Log
+import android.widget.TextView
 import java.io.File
 import com.tesseract.spectraz.RootUtils
 import com.tesseract.spectraz.RootUtils.readFileWithRoot
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -19,6 +21,11 @@ class ExecutionManager(private val context: Context) {
     val commandGenerator = CommandGeneratorModel(context)
     val commandConsolidator = CommandConsolidatorModel(context)
     val commandVerifier = CommandVerifierModel(context)
+
+    private lateinit var jsonView: TextView
+
+    // Global variable to store the formatted response string
+    var lastModelResponse: String? = null
 
     // for verification failure
     var verificationFailureReason: String? = null
@@ -36,16 +43,25 @@ class ExecutionManager(private val context: Context) {
 
         // Step 1: QueryStepper to Tagger
         queryStepper.onResponseReceived.observeForever { response ->
+            lastModelResponse = "QueryStepper\n$response"
+            jsonView.text = lastModelResponse
             onModelResponse("QueryStepper", response)
 
-            // Optional: clean markdown fences here if needed
-            tagger.sendMessage(response)
+            if (isValidJson(response)) {
+                tagger.sendMessage(response)
+            } else {
+                Log.w("AIModelPipeline", "Skipping Tagger. Not valid JSON.")
+            }
         }
+
 
         // Step 2: Tagger to CommandGenerator with Context Injection
         tagger.onResponseReceived.observeForever { response ->
             onModelResponse("Tagger", response)
 
+            lastModelResponse = "Tagger\n$response"
+
+            jsonView.setText(lastModelResponse)
             // Documentation JSON Injection
             try {
                 // Clean markdown fences like ```json and ``` if present
@@ -82,6 +98,10 @@ class ExecutionManager(private val context: Context) {
         commandGenerator.onResponseReceived.observeForever { response ->
             onModelResponse("CommandGenerator", response)
 
+            jsonView.setText(lastModelResponse)
+
+            lastModelResponse = "commandGenerator\n$response"
+
             try {
                 // Clean markdown fences if needed
                 val cleanedResponse = response.replace("```json", "").replace("```", "").trim()
@@ -115,17 +135,19 @@ class ExecutionManager(private val context: Context) {
             }
         }
 
-
         // Step 4: CommandConsolidator to CommandVerifier
         commandConsolidator.onResponseReceived.observeForever { response ->
             onModelResponse("CommandConsolidator", response)
+            lastModelResponse = "commandConsolidator\n$response"
+            jsonView.setText(lastModelResponse)
             commandVerifier.sendMessage(response)
         }
 
         // Step 5: Final command output
         commandVerifier.onResponseReceived.observeForever { response ->
             onModelResponse("CommandVerifier", response)
-
+            lastModelResponse = "commandVerifier\n$response"
+            jsonView.setText(lastModelResponse)
             // Clean markdown fences if present
             val cleanedJson = response.replace("```json", "").replace("```", "").trim()
 
@@ -164,6 +186,25 @@ class ExecutionManager(private val context: Context) {
         }
     }
 
+    fun isValidJson(input: String): Boolean {
+        return try {
+            val trimmed = input.trim()
+            when {
+                trimmed.startsWith("{") -> JSONObject(trimmed)
+                trimmed.startsWith("[") -> JSONArray(trimmed)
+                else -> return false
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+
+    // called from execution manager to set to UI textbox
+    fun setJsonView(view: TextView) {
+        this.jsonView = view
+    }
 
     /**
      * Called each time a model produces output.

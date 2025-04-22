@@ -6,33 +6,58 @@
     android:padding="8dp">
 
     <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:id="@+id/scrollView">
+        android:layout_width="400dp"
+        android:layout_height="244dp"
+        android:layout_weight="1">
 
         <TextView
-            android:id="@+id/outputView"
+            android:id="@+id/jsonView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#0f0"
-            android:textSize="14sp"
+            android:text="TextView" />
+    </ScrollView>
+
+    <ScrollView
+        android:layout_width="400dp"
+        android:layout_height="267dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/commandView"
+            android:visibility="visible"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TextView" />
+    </ScrollView>
+
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="313dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/terminalView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:lineSpacingExtra="4dp"
-            android:typeface="monospace"
+            android:padding="4dp"
+            android:textColor="#0f0"
             android:textIsSelectable="true"
-            android:padding="4dp" />
+            android:textSize="14sp"
+            android:typeface="monospace" />
     </ScrollView>
 
     <EditText
         android:id="@+id/inputField"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#fff"
+        android:layout_height="37dp"
         android:background="#222"
         android:hint="Enter command"
-        android:typeface="monospace"
         android:imeOptions="actionDone"
-        android:inputType="text" />
+        android:inputType="text"
+        android:textColor="#fff"
+        android:typeface="monospace" />
 
     <!-- New LinearLayout to hold the buttons side by side -->
     <LinearLayout
@@ -43,7 +68,7 @@
 
         <Button
             android:id="@+id/sendButton"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Send Command" />

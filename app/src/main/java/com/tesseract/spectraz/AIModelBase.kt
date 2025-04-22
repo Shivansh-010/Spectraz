@@ -2,6 +2,7 @@ package com.tesseract.spectraz
 
 import android.content.Context
 import android.util.Log
+import android.widget.TextView
 import androidx.lifecycle.MutableLiveData
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -10,6 +11,7 @@ import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import com.tesseract.spectraz.RootUtils
+import android.view.View
 
 data class AIMessage(
     val role: String, // "user" or "model"

@@ -7,6 +7,7 @@ android {
     namespace = "com.tesseract.spectraz"
     compileSdk = 35
 
+
     defaultConfig {
         applicationId = "com.tesseract.spectraz"
         minSdk = 24
