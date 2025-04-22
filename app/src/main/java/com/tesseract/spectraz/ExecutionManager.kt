@@ -60,41 +60,56 @@ class ExecutionManager(private val context: Context) {
         // Step 2: Tagger to CommandGenerator with Context Injection
         tagger.onResponseReceived.observeForever { response ->
             onModelResponse("Tagger", response)
-
             lastModelResponse = "Tagger\n$response"
+            jsonView.text = lastModelResponse
 
-            jsonView.setText(lastModelResponse)
-            // Documentation JSON Injection
             try {
-                // Clean markdown fences like ```json and ``` if present
-                val cleanedJson = response.replace("```json", "").replace("```", "").trim()
+                // clean up any fences
+                val cleanedJson = response
+                    .replace(Regex("```json", RegexOption.IGNORE_CASE), "")
+                    .replace("```", "")
+                    .trim()
 
                 val jsonObject = JSONObject(cleanedJson)
                 val stepsArray = jsonObject.getJSONArray("steps")
 
                 for (i in 0 until stepsArray.length()) {
                     val step = stepsArray.getJSONObject(i)
-                    val tag = step.optString("tag", "")
-                    if (tag.isNotEmpty()) {
-                        // Construct file path
-                        val docPath = "/storage/emulated/0/Documents/Obsidian_Live/_KnowledgeBase/DataFiles/Documentation/$tag.md"
 
-                        // Read file using your root-enabled file reader
-                        val docContent = readFileWithRoot(docPath)
-
-                        // Replace tag with documentation field
-                        step.remove("tag")
-                        step.put("documentation", docContent)
+                    // 1) collect tags (single or multiple)
+                    val tagList = mutableListOf<String>()
+                    // single‑tag legacy support
+                    step.optString("tag")?.takeIf { it.isNotBlank() }?.let { tagList.add(it) }
+                    // multi‑tag support
+                    step.optJSONArray("tags")?.let { arr ->
+                        for (j in 0 until arr.length()) {
+                            arr.optString(j)?.takeIf { it.isNotBlank() }?.let { tagList.add(it) }
+                        }
                     }
+
+                    // 2) read all docs
+                    val docsJson = JSONArray()
+                    tagList.forEach { tagName ->
+                        val docPath =
+                            "/storage/emulated/0/Documents/Obsidian_Live/_KnowledgeBase/DataFiles/Documentation/$tagName.md"
+                        val docContent = readFileWithRoot(docPath)
+                        docsJson.put(docContent)
+                    }
+
+                    // 3) remove old fields & inject docs array
+                    step.remove("tag")
+                    step.remove("tags")
+                    step.put("documentation", docsJson)
                 }
 
-                // Pass JSON with tool Documentation to CommandGenerator
+                // send enriched JSON forward
                 commandGenerator.sendMessage(jsonObject.toString())
 
             } catch (e: Exception) {
                 Log.e("ExecutionManager", "Error processing Tagger response: ${e.message}")
             }
         }
+
 
         // Step 3: CommandGenerator to CommandConsolidator
         commandGenerator.onResponseReceived.observeForever { response ->
