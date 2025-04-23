@@ -173,13 +173,16 @@ class MainActivity : AppCompatActivity() {
     private fun executeCommandInTerminal(command: String) {
         Log.d("MainActivity", "Executing command: $command")
 
-        // Special case: if the command is "bootdebian", run the full chroot boot script
         if (command.trim().equals("bootdebian", ignoreCase = true)) {
             terminalWrapper.bootDebianChroot()
             Log.d("MainActivity", "Debian Boot Initiated")
         } else {
-            terminalWrapper.runCommand(command, true)
+            if (terminalWrapper.isDebianRunning) {
+                // val chrootCommand = "chroot /data/local/debian /bin/bash -c '$command'"
+                terminalWrapper.runInDebian(command)
+            } else {
+                terminalWrapper.runCommand(command, asRoot = true)
+            }
         }
     }
-
 }

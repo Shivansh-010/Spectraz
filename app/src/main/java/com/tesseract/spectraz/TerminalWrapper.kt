@@ -1,5 +1,6 @@
 package com.tesseract.spectraz
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 
@@ -15,6 +16,9 @@ class TerminalWrapper {
     private val history = mutableListOf<TerminalEntry>()
     private val _liveHistory = MutableLiveData<List<TerminalEntry>>()
     val liveHistory: LiveData<List<TerminalEntry>> = _liveHistory
+
+    var isDebianRunning: Boolean = false
+        private set
 
     fun runCommand(command: String, asRoot: Boolean = false) {
         Thread {
@@ -69,8 +73,25 @@ class TerminalWrapper {
     }
 
     fun bootDebianChroot() {
-        runCommand("cd /data/local/debian && nohup ./boot-debian.sh &", asRoot = true)
+        // Start the boot-debian.sh script inside the /data/local/debian directory.
+        // Running it with su as root ensures the necessary permissions are set up.
+        runCommand("cd /data/local/debian && su -c './boot-debian.sh'", asRoot = true)
+
+        // After booting, we mark the Debian environment as running.
+        isDebianRunning = true // Mark as Debian is booted
+        Log.d("MainActivity", "Debian Boot Initiated and environment set up")
     }
+    
+    fun runInDebian(command: String) {
+        // Wrap the command inside chroot to ensure it runs in the Debian environment.
+        val chrootCommand = "chroot /data/local/debian /bin/bash --login -c '$command'"
+
+        // Run the command as root to ensure we have the necessary permissions.
+        runCommand(chrootCommand, asRoot = true)
+
+        Log.d("MainActivity", "Running command in Debian: $command")
+    }
+
 
     fun clearHistory() {
         history.clear()
