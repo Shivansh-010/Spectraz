@@ -12,6 +12,7 @@ import android.text.InputType
 import androidx.core.app.ActivityCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.json.JSONObject
+import com.tesseract.spectraz.TerminalNative
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
@@ -59,7 +61,7 @@ class MainActivity : AppCompatActivity() {
         sendButton.setOnClickListener {
             val command = inputField.text.toString()
             if (command.isNotEmpty()) {
-                terminalWrapper.runCommand(command)
+                executeCommandInTerminal(command)
                 inputField.setText("")
                 inputField.requestFocus()
             }
@@ -169,8 +171,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun executeCommandInTerminal(command: String) {
-        // You can replace this with your own logic for executing the command in the terminal
         Log.d("MainActivity", "Executing command: $command")
-        terminalWrapper.runCommand(command)
+
+        // Special case: if the command is "bootdebian", run the full chroot boot script
+        if (command.trim().equals("bootdebian", ignoreCase = true)) {
+            terminalWrapper.bootDebianChroot()
+            Log.d("MainActivity", "Debian Boot Initiated")
+        } else {
+            terminalWrapper.runCommand(command, true)
+        }
     }
+
 }

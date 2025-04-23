@@ -17,38 +17,59 @@ class TerminalWrapper {
     val liveHistory: LiveData<List<TerminalEntry>> = _liveHistory
 
     fun runCommand(command: String, asRoot: Boolean = false) {
-        try {
-            // Add the command itself to the history first
-            addToHistory("> " + command, "", isError = false)
+        Thread {
+            try {
+                addToHistory("> $command", "", false)
 
-            // Execute the command
-            val fullCommand = if (asRoot) arrayOf("su", "-c", command) else arrayOf("sh", "-c", command)
-            val process = Runtime.getRuntime().exec(fullCommand)
+                val fullCommand = if (asRoot) arrayOf("su", "-c", command) else arrayOf("sh", "-c", command)
+                val process = Runtime.getRuntime().exec(fullCommand)
 
-            // Read the output and error streams
-            val output = process.inputStream.bufferedReader().readText().trim()
-            val error = process.errorStream.bufferedReader().readText().trim()
-            process.waitFor()
+                val stdout = StringBuilder()
+                val stderr = StringBuilder()
 
-            // Add output or error to the history
-            if (output.isNotEmpty()) {
-                addToHistory("", output, isError = false)
+                val stdoutThread = Thread {
+                    process.inputStream.bufferedReader().useLines { lines ->
+                        lines.forEach { stdout.appendLine(it) }
+                    }
+                }
+
+                val stderrThread = Thread {
+                    process.errorStream.bufferedReader().useLines { lines ->
+                        lines.forEach { stderr.appendLine(it) }
+                    }
+                }
+
+                stdoutThread.start()
+                stderrThread.start()
+
+                stdoutThread.join()
+                stderrThread.join()
+
+                process.waitFor()
+
+                if (stdout.isNotEmpty()) {
+                    addToHistory("", stdout.toString().trim(), false)
+                }
+
+                if (stderr.isNotEmpty()) {
+                    addToHistory("", stderr.toString().trim(), true)
+                }
+
+            } catch (e: Exception) {
+                addToHistory("> $command", "Exception: ${e.message}", true)
             }
-
-            if (error.isNotEmpty()) {
-                addToHistory("", error, isError = true)
-            }
-
-        } catch (e: Exception) {
-            // If an exception occurs, add it to the history
-            addToHistory("> " + command, "Exception: ${e.message}", isError = true)
-        }
+        }.start()
     }
+
 
     private fun addToHistory(command: String, result: String, isError: Boolean) {
         val entry = TerminalEntry(command, result, isError)
         history.add(entry)
         _liveHistory.postValue(history.toList())  // Update the live history
+    }
+
+    fun bootDebianChroot() {
+        runCommand("cd /data/local/debian && nohup ./boot-debian.sh &", asRoot = true)
     }
 
     fun clearHistory() {

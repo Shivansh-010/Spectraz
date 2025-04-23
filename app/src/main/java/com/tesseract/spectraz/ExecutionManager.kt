@@ -110,7 +110,6 @@ class ExecutionManager(private val context: Context) {
             }
         }
 
-
         // Step 3: CommandGenerator to CommandConsolidator
         commandGenerator.onResponseReceived.observeForever { response ->
             onModelResponse("CommandGenerator", response)
@@ -232,8 +231,6 @@ class ExecutionManager(private val context: Context) {
         }
     }
 
-
-
     // called from execution manager to set to UI textbox
     fun setJsonView(view: TextView) {
         this.jsonView = view
@@ -317,7 +314,6 @@ class ExecutionManager(private val context: Context) {
         modelConfigs["CommandConsolidator"]?.let { configureModel(commandConsolidator, it) }
         modelConfigs["CommandVerifier"]?.let { configureModel(commandVerifier, it) }
     }
-
 
     // Additional functions to process queries and route through the pipeline can be added here.
     fun processQuery(query: String) {
