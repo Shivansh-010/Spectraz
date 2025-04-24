@@ -9,9 +9,14 @@ import androidx.core.content.ContextCompat
 import android.Manifest
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
+import android.util.TypedValue
 import android.view.View
 import androidx.core.app.ActivityCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -92,6 +97,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+
     public fun setStagesUpTo(stage: Int, color: Int) {
         val boxes = listOf(
             findViewById<View>(R.id.box0),
@@ -102,40 +108,102 @@ class MainActivity : AppCompatActivity() {
             findViewById<View>(R.id.box5)
         )
 
-        val glow = AnimationUtils.loadAnimation(this, R.anim.glow)
-        val defaultOffColor = "#222222".toColorInt() // Define the off color
+        val glowAnimation = AnimationUtils.loadAnimation(this, R.anim.glow)
+        val defaultOffColor = "#222222".toColorInt()
+        val glowInsetDp = 4f // Adjust this value to change the size of the inner square (higher value = smaller square)
+        val innerCornerRadiusDp = 2f // Optional: Rounded corners for the inner square
 
-        // 1. Update the color map: Store the color for the current stage
+        // Convert DP values to pixels
+        val glowInsetPx = dpToPx(glowInsetDp, this).toInt()
+        val innerCornerRadiusPx = dpToPx(innerCornerRadiusDp, this)
+
+        // --- State Management (same as before) ---
         stageColors[stage] = color
-
-        // 2. Clean up the color map: Remove entries for stages after the current one.
-        //    Iterate over a copy of keys to avoid ConcurrentModificationException
         val keysToRemove = stageColors.keys.filter { it > stage }
         keysToRemove.forEach { stageColors.remove(it) }
+        // --- End State Management ---
 
-        // Update the UI based on the current target 'stage'
+
+        // --- Create Drawables ---
+        // Drawable for the OFF state (simple solid color)
+        val offDrawable = ColorDrawable(defaultOffColor)
+
+
+        // --- Update UI ---
         boxes.forEachIndexed { index, view ->
             view.clearAnimation() // Clear any previous animation
 
             if (index <= stage) {
-                // This box should be ON.
-                // Get its color from the map (it should exist for index <= stage).
-                // Use defaultOffColor as a fallback just in case, though ideally not needed.
-                val boxColor = stageColors[index] ?: defaultOffColor
-                view.setBackgroundColor(boxColor)
+                // This box should be ON (glowing square)
+                val boxColor = stageColors[index] ?: defaultOffColor // Should always find a color here now
 
-                // Only animate the *most recently activated* stage (the target 'stage')
+                // **Create the square glow drawable dynamically using LayerDrawable**
+                val squareGlowDrawable = createSquareGlowDrawable(
+                    boxColor,
+                    defaultOffColor,
+                    glowInsetPx,
+                    innerCornerRadiusPx
+                )
+
+                view.background = squareGlowDrawable // Set the drawable background
+
+                // Only animate the *most recently activated* stage
                 if (index == stage) {
-                    view.startAnimation(glow)
+                    view.startAnimation(glowAnimation)
                 }
             } else {
-                // This box should be OFF.
-                view.setBackgroundColor(defaultOffColor)
-                // Ensure stage color entry is removed (already done above, but double ensures consistency)
-                // stageColors.remove(index) // This is redundant now due to the cleanup step above
+                // This box should be OFF
+                view.background = offDrawable // Use the simple OFF drawable
             }
         }
     }
+
+    /**
+     * Helper function to create a LayerDrawable simulating an inset square glow.
+     *
+     * @param glowColor The color of the inner square.
+     * @param backgroundColor The color of the outer background area.
+     * @param insetPx The inset in pixels applied to all sides of the inner square.
+     * @param innerCornerRadiusPx Corner radius for the inner glow square.
+     * @return A LayerDrawable representing the effect.
+     */
+    private fun createSquareGlowDrawable(
+        glowColor: Int,
+        backgroundColor: Int,
+        insetPx: Int,
+        innerCornerRadiusPx: Float
+    ): Drawable {
+        // Layer 0: Background
+        val backgroundDrawable = ColorDrawable(backgroundColor)
+
+        // Layer 1: Inner Glow Square
+        // Using GradientDrawable for easy corner radius, but set as solid color
+        val glowSquareDrawable = GradientDrawable()
+        glowSquareDrawable.shape = GradientDrawable.RECTANGLE
+        glowSquareDrawable.setColor(glowColor)
+        glowSquareDrawable.cornerRadius = innerCornerRadiusPx // Apply corner radius
+
+        // Combine layers
+        val layers = arrayOf(backgroundDrawable, glowSquareDrawable)
+        val layerDrawable = LayerDrawable(layers)
+
+        // Apply inset to the top layer (index 1) to make the square smaller and centered
+        layerDrawable.setLayerInset(1, insetPx, insetPx, insetPx, insetPx)
+
+        return layerDrawable
+    }
+
+    /**
+     * Helper function to convert DP to Pixels.
+     */
+    private fun dpToPx(dp: Float, context: Context): Float {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp,
+            context.resources.displayMetrics
+        )
+    }
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
