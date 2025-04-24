@@ -14,7 +14,7 @@ import org.json.JSONObject
  * ExecutionManager routes queries through the model pipeline.
  * It also provides a method to configure each model from a config file.
  */
-class ExecutionManager(private val context: Context) {
+class ExecutionManager(private val context: Context, private val activity: MainActivity) {
 
     // Model instances; they are constructed with the same context.
     val queryStepper = QueryStepperModel(context)
@@ -44,6 +44,7 @@ class ExecutionManager(private val context: Context) {
 
         // Step 1: QueryStepper to Tagger
         queryStepper.onResponseReceived.observeForever { response ->
+            activity.setStagesUpTo(0, activity.getStageColor(0))
             lastModelResponse = "QueryStepper\n$response"
             jsonView.text = lastModelResponse
             onModelResponse("QueryStepper", response)
@@ -60,6 +61,7 @@ class ExecutionManager(private val context: Context) {
         // this will work when tagname is TaG and filename is "tAg"
         // Step 2: Tagger to CommandGenerator with Context Injection
         tagger.onResponseReceived.observeForever { response ->
+            activity.setStagesUpTo(1, activity.getStageColor(1))
             onModelResponse("Tagger", response)
             lastModelResponse = "Tagger\n$response"
             jsonView.text = lastModelResponse
@@ -129,6 +131,7 @@ class ExecutionManager(private val context: Context) {
 
         // Step 3: CommandGenerator to CommandConsolidator
         commandGenerator.onResponseReceived.observeForever { response ->
+            activity.setStagesUpTo(2, activity.getStageColor(2))
             onModelResponse("CommandGenerator", response)
 
             jsonView.setText(lastModelResponse)
@@ -170,6 +173,7 @@ class ExecutionManager(private val context: Context) {
 
         // Step 4: CommandConsolidator to CommandVerifier
         commandConsolidator.onResponseReceived.observeForever { response ->
+            activity.setStagesUpTo(3, activity.getStageColor(3))
             onModelResponse("CommandConsolidator", response)
             lastModelResponse = "commandConsolidator\n$response"
             jsonView.setText(lastModelResponse)
@@ -178,6 +182,7 @@ class ExecutionManager(private val context: Context) {
 
         // Step 5: Final command output
         commandVerifier.onResponseReceived.observeForever { response ->
+            activity.setStagesUpTo(4, activity.getStageColor(4))
             onModelResponse("CommandVerifier", response)
             lastModelResponse = "commandVerifier\n$response"
             jsonView.setText(lastModelResponse)

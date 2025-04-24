@@ -9,6 +9,8 @@ import androidx.core.content.ContextCompat
 import android.Manifest
 import android.content.Context
 import android.graphics.Color
+import android.os.Handler
+import android.os.Looper
 import android.text.InputType
 import android.view.View
 import androidx.core.app.ActivityCompat
@@ -17,7 +19,7 @@ import org.json.JSONObject
 import com.tesseract.spectraz.TerminalNative
 import androidx.core.graphics.toColorInt
 import android.view.animation.AnimationUtils
-import androidx.core.graphics.toColorInt
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,6 +32,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var executionManager: ExecutionManager
     private lateinit var terminalWrapper: TerminalWrapper
+    // Cache of active stages and their colors
+    val stageColors = mutableMapOf<Int, Int>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         sendButton = findViewById(R.id.sendButton)
         scrollView = findViewById(R.id.scrollView)
         sendAiButton = findViewById(R.id.sendAiButton)
+
 
         // After Initializing jsonView
         initExecutionManager()
@@ -83,8 +88,40 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // testAllBoxes()
+        // testPipelineStages()
 
+    }
+
+    public fun setStagesUpTo(stage: Int, color: Int) {
+        val boxes = listOf(
+            findViewById<View>(R.id.box0),
+            findViewById<View>(R.id.box1),
+            findViewById<View>(R.id.box2),
+            findViewById<View>(R.id.box3),
+            findViewById<View>(R.id.box4),
+            findViewById<View>(R.id.box5)
+        )
+
+        val glow = AnimationUtils.loadAnimation(this, R.anim.glow)
+
+        // Mark this stage as activated
+        stageColors[stage] = color
+
+        boxes.forEachIndexed { index, view ->
+            view.clearAnimation()
+
+            if (stageColors.containsKey(index)) {
+                val boxColor = stageColors[index] ?: "#222222".toColorInt()
+                view.setBackgroundColor(boxColor)
+
+                // Only animate the most recently lit stage
+                if (index == stage) {
+                    view.startAnimation(glow)
+                }
+            } else {
+                view.setBackgroundColor("#222222".toColorInt())
+            }
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -123,7 +160,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initExecutionManager() {
-        executionManager = ExecutionManager(this)
+        executionManager = ExecutionManager(this, this)
 
         executionManager.setJsonView(jsonView)
 
@@ -179,6 +216,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun executeCommandInTerminal(command: String) {
+        setStagesUpTo(5, getStageColor(5))
+
         Log.d("MainActivity", "Executing command: $command")
 
         if (command.trim().equals("bootdebian", ignoreCase = true)) {
@@ -193,25 +232,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-    fun testAllBoxes() {
-        val boxes = listOf(
-            findViewById<View>(R.id.box0),
-            findViewById<View>(R.id.box1),
-            findViewById<View>(R.id.box2),
-            findViewById<View>(R.id.box3),
-            findViewById<View>(R.id.box4),
-            findViewById<View>(R.id.box5)
-        )
 
-        val colors = listOf(
-            Color.RED, Color.GREEN, Color.BLUE,
-            Color.YELLOW, Color.MAGENTA, Color.CYAN, Color.BLUE
-        )
-
-        boxes.forEachIndexed { index, _ ->
-            setStageActive(index, colors[index])
+    fun getStageColor(stage: Int): Int {
+        return when (stage) {
+            0 -> "#CCCCCC".toColorInt() // Query Stepper white
+            1 -> "#BC8A15".toColorInt() // Tagger dull yellow
+            2 -> "#1FC7E5".toColorInt() // Command Generator cyan
+            3 -> "#19A87D".toColorInt() // Consolidator dull green
+            4 -> "#9859E6".toColorInt() // Verifier wisteria
+            5 -> "#00FF00".toColorInt() // Terminal Output Terminal green
+            else -> "#222222".toColorInt()
         }
-
     }
 
 
@@ -238,6 +269,4 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-
 }
