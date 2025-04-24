@@ -11,199 +11,232 @@ data class TerminalEntry(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+// Enum to define the execution environment
+enum class ExecutionEnvironment {
+    ANDROID, DEBIAN
+}
+
 class TerminalWrapper {
 
     private val history = mutableListOf<TerminalEntry>()
     private val _liveHistory = MutableLiveData<List<TerminalEntry>>()
     val liveHistory: LiveData<List<TerminalEntry>> = _liveHistory
 
-    var isDebianRunning: Boolean = false
+    // State for the current execution environment
+    private var currentEnvironment: ExecutionEnvironment = ExecutionEnvironment.DEBIAN // Default to Debian
         private set
 
-    fun runCommand(command: String, asRoot: Boolean = false) {
-        Thread {
-            try {
-                // Clean up the history: Add the command first
-                addToHistory("> $command", "", false)
+    // Flag indicating if boot has been initiated (doesn't guarantee success)
+    var isDebianBootInitiated: Boolean = false
+        private set
 
-                // Run the command (with root if needed)
-                val fullCommand = if (asRoot) arrayOf("su", "-c", command) else arrayOf("sh", "-c", command)
-                val process = Runtime.getRuntime().exec(fullCommand)
+    // Path to the chroot environment
+    private val debianChrootDir = "/data/local/debian"
 
-                val stdout = StringBuilder()
-                val stderr = StringBuilder()
-
-                // Handle stdout in a separate thread
-                val stdoutThread = Thread {
-                    process.inputStream.bufferedReader().useLines { lines ->
-                        lines.forEach { stdout.appendLine(it) }
-                    }
-                }
-
-                // Handle stderr in a separate thread
-                val stderrThread = Thread {
-                    process.errorStream.bufferedReader().useLines { lines ->
-                        lines.forEach { stderr.appendLine(it) }
-                    }
-                }
-
-                // Start the threads to read stdout and stderr concurrently
-                stdoutThread.start()
-                stderrThread.start()
-
-                // Wait for threads to finish
-                stdoutThread.join()
-                stderrThread.join()
-
-                // Wait for the process to exit
-                process.waitFor()
-
-                // Add the results to history
-                if (stdout.isNotEmpty()) {
-                    addToHistory("exec result:", stdout.toString(), false)
-                }
-
-                // Add the stderr if there's any
-                if (stderr.isNotEmpty()) {
-                    addToHistory("exec error:", stderr.toString(), true)
-                }
-
-                // Add a separator to make the output look clean and readable
-                addToHistory("___", "", false)
-
-            } catch (e: Exception) {
-                // Add exception message to history
-                addToHistory("> $command", "Exception: ${e.message}", true)
-            }
-        }.start()
+    // --- Initialization ---
+    init {
+        Log.d("TerminalWrapper", "Initializing TerminalWrapper...")
+        // Boot Debian immediately upon creation
+        bootDebianChroot()
+        // Attempt to change directory within Debian after starting boot
+        // Note: This command is queued and runs after boot starts,
+        // assuming /home exists early in the boot process.
+        Log.d("TerminalWrapper", "Queueing initial 'cd /home' for Debian.")
+        runCommand("cd /home") // This will run in Debian by default
     }
 
-    fun isCommandForDebian(command: String): Boolean {
-        val lower = command.trim().lowercase()
+    // --- Public Methods ---
 
-        return listOf(
-            "apt", "dpkg", "python", "pip", "systemctl", "bash", "service",
-            "wget", "curl", "ls", "pwd", "whoami", "nano", "vim", "python3"
-        ).any { lower.startsWith(it) || lower.contains(" $it ") }
-    }
-
-    fun runSmartCommand(command: String) {
-        val trimmed = command.trim()
-
-        when {
-            trimmed.startsWith("\$android:") -> {
-                runCommand(trimmed.removePrefix("\$android:").trim(), asRoot = true)
-            }
-
-            trimmed.startsWith("\$debian:") -> {
-                val chrootCommand = "chroot /data/local/debian /bin/bash --login -c '${trimmed.removePrefix("\$debian:").trim()}'"
-                runCommand(chrootCommand, asRoot = true)
-            }
-
-            isCommandForDebian(trimmed) -> {
-                val chrootCommand = "chroot /data/local/debian /bin/bash --login -c '$trimmed'"
-                runCommand(chrootCommand, asRoot = true)
-            }
-
-            else -> {
-                runCommand(trimmed, asRoot = true)
-            }
+    /**
+     * Sets the target environment for subsequent runCommand calls.
+     */
+    fun setEnvironment(environment: ExecutionEnvironment) {
+        if (currentEnvironment != environment) {
+            Log.d("TerminalWrapper", "Switching environment to ${environment.name}")
+            currentEnvironment = environment
+            // Add a visual separator in history
+            addToHistory("--- Switched to ${environment.name} environment ---", "", false)
         }
     }
 
-    fun runCommandWithTermuxEnv(command: String, asRoot: Boolean = false) {
+    /**
+     * Gets the currently selected execution environment.
+     */
+    fun getCurrentEnvironment(): ExecutionEnvironment = currentEnvironment
+
+    /**
+     * Runs a command in the currently selected environment (Android or Debian).
+     *
+     * @param command The command string to execute.
+     * @param asRoot For ANDROID environment only: If true, executes the command using "su -c".
+     *               This parameter is ignored for the DEBIAN environment, as chroot itself requires root.
+     */
+    fun runCommand(command: String, asRoot: Boolean = false) {
         Thread {
+            val commandToLog = "> $command"
+            val environmentForCommand = currentEnvironment // Capture current env for this thread
+            var effectiveCommand = command // The command string that might be modified
+            val executionCommandArray: Array<String> // The final array for Runtime.exec
+
             try {
-                // Add Termux directories to environment variables
-                val termuxBin = "/data/data/com.termux/files/usr/bin/"
-                val termuxLib = "/data/data/com.termux/files/usr/lib/"
+                // Add the user's intended command to history first
+                addToHistory(commandToLog, "", false)
+                Log.d("TerminalWrapper", "Executing in ${environmentForCommand.name}: $command")
 
-                // Create a new process builder
-                val processBuilder = ProcessBuilder()
-
-                // Set environment variables to include Termux paths
-                val processEnv = processBuilder.environment()
-                processEnv["PATH"] = "${processEnv["PATH"]}:$termuxBin"
-                processEnv["LD_LIBRARY_PATH"] = "${processEnv["LD_LIBRARY_PATH"]}:$termuxLib"
-
-                // Log the environment variables to check
-                Log.d("KotlinApp", "PATH: ${processEnv["PATH"]}")
-                Log.d("KotlinApp", "LD_LIBRARY_PATH: ${processEnv["LD_LIBRARY_PATH"]}")
-
-                // Decide whether to run the command as root or not
-                val fullCommand = if (asRoot) arrayOf("su", "-c", command) else arrayOf("sh", "-c", command)
-
-                // Start the process
-                processBuilder.command(*fullCommand)
-                val process = processBuilder.start()
-
-                // Handle stdout and stderr streams
-                val stdout = StringBuilder()
-                val stderr = StringBuilder()
-
-                val stdoutThread = Thread {
-                    process.inputStream.bufferedReader().useLines { lines ->
-                        lines.forEach { stdout.appendLine(it) }
+                // Prepare the actual command based on the environment
+                when (environmentForCommand) {
+                    ExecutionEnvironment.DEBIAN -> {
+                        // Ensure Debian boot has at least been started
+                        if (!isDebianBootInitiated) {
+                            val bootMsg = "Debian environment not booted. Cannot run command."
+                            Log.e("TerminalWrapper", bootMsg)
+                            addToHistory(commandToLog, bootMsg, true)
+                            addToHistory("___", "", false) // Separator
+                            return@Thread // Exit thread
+                        }
+                        // Escape single quotes within the command for shell safety inside '-c'
+                        val escapedCommand = command.replace("'", "'\\''")
+                        // Construct the chroot command, always executed via Android 'su'
+                        effectiveCommand = "chroot $debianChrootDir /bin/bash --login -c '$escapedCommand'"
+                        executionCommandArray = arrayOf("su", "-c", effectiveCommand)
+                        Log.v("TerminalWrapper", "Effective Debian command: ${executionCommandArray.joinToString(" ")}")
+                    }
+                    ExecutionEnvironment.ANDROID -> {
+                        // Use standard Android shell or su
+                        executionCommandArray = if (asRoot) {
+                            arrayOf("su", "-c", command)
+                        } else {
+                            arrayOf("sh", "-c", command)
+                        }
+                        Log.v("TerminalWrapper", "Effective Android command: ${executionCommandArray.joinToString(" ")}")
                     }
                 }
 
+                // Execute the prepared command
+                val process = Runtime.getRuntime().exec(executionCommandArray)
+
+                val stdout = StringBuilder()
+                val stderr = StringBuilder()
+
+                // Concurrently read stdout and stderr (same logic as before)
+                val stdoutThread = Thread {
+                    try {
+                        process.inputStream.bufferedReader().useLines { lines ->
+                            lines.forEach { stdout.appendLine(it) }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("TerminalWrapper", "Error reading stdout: ${e.message}")
+                        stderr.appendLine("Error reading stdout: ${e.message}") // Add to stderr
+                    }
+                }
                 val stderrThread = Thread {
-                    process.errorStream.bufferedReader().useLines { lines ->
-                        lines.forEach { stderr.appendLine(it) }
+                    try {
+                        process.errorStream.bufferedReader().useLines { lines ->
+                            lines.forEach { stderr.appendLine(it) }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("TerminalWrapper", "Error reading stderr: ${e.message}")
+                        // Avoid infinite loop if error reading error stream
                     }
                 }
 
                 stdoutThread.start()
                 stderrThread.start()
-
                 stdoutThread.join()
                 stderrThread.join()
 
-                process.waitFor()
+                val exitCode = process.waitFor()
+                Log.d("TerminalWrapper", "Command finished with exit code: $exitCode")
 
-                // Add output and error to history
-                if (stdout.isNotEmpty()) {
-                    addToHistory("", stdout.toString().trim(), false)
+                // Add results to history
+                val outputString = stdout.toString().trim()
+                val errorString = stderr.toString().trim()
+
+                if (outputString.isNotEmpty()) {
+                    // Use "Output:" prefix for clarity, keep original command logged above
+                    addToHistory("Output:", outputString, false)
+                }
+                if (errorString.isNotEmpty()) {
+                    // Use "Error:" prefix, mark as error
+                    addToHistory("Error:", errorString, true)
+                }
+                if (outputString.isEmpty() && errorString.isEmpty()) {
+                    // Indicate if there was no output at all
+                    addToHistory("(No output)", "", false)
                 }
 
-                if (stderr.isNotEmpty()) {
-                    addToHistory("", stderr.toString().trim(), true)
-                }
+                // Add a separator
+                addToHistory("___", "", false)
 
             } catch (e: Exception) {
-                addToHistory("> $command", "Exception: ${e.message}", true)
+                Log.e("TerminalWrapper", "Exception running command '$command': ${e.message}", e)
+                // Add exception message to history, linked to the original command
+                addToHistory(commandToLog, "Exception: ${e.message}", true)
+                addToHistory("___", "", false) // Separator
             }
         }.start()
     }
 
-    private fun addToHistory(command: String, result: String, isError: Boolean) {
-        val entry = TerminalEntry(command, result, isError)
-        history.add(entry)
-        _liveHistory.postValue(history.toList())  // Update the live history
+    /**
+     * Initiates the Debian boot process. Should only be called once.
+     */
+    private fun bootDebianChroot() {
+        if (isDebianBootInitiated) {
+            Log.w("TerminalWrapper", "Debian boot already initiated.")
+            return
+        }
+        Log.d("TerminalWrapper", "Initiating Debian boot sequence...")
+        // Define the boot command relative to the chroot dir
+        // 'runCommand' will handle wrapping this with 'su -c' because asRoot = true
+        val bootScriptCommand = "cd $debianChrootDir && ./boot-debian.sh"
+
+        // Run the boot script using the ANDROID 'su' environment.
+        // Temporarily switch environment just for this call if needed,
+        // or rely on the caller knowing the context. For simplicity,
+        // let's just call runCommand directly with asRoot = true.
+        // Note: This uses the *Android* environment execution path within runCommand.
+        executeAndroidCommand(bootScriptCommand, asRoot = true) // Use a helper to bypass env toggle
+
+        // Mark that boot has been started.
+        // IMPORTANT: This does NOT guarantee the boot script succeeded, only that it was launched.
+        isDebianBootInitiated = true
+        Log.d("TerminalWrapper", "Debian boot command launched.")
+        addToHistory("--- Debian boot initiated ---", "", false)
     }
 
-    fun bootDebianChroot() {
-        // Start the boot-debian.sh script inside the /data/local/debian directory.
-        // Running it with su as root ensures the necessary permissions are set up.
-        runCommand("cd /data/local/debian && su -c './boot-debian.sh'", asRoot = true)
-
-        // After booting, we mark the Debian environment as running.
-        isDebianRunning = true // Mark as Debian is booted
-        Log.d("MainActivity", "Debian Boot Initiated and environment set up")
-    }
-    
-    fun runInDebian(command: String) {
-        // Wrap the command inside chroot to ensure it runs in the Debian environment.
-        val chrootCommand = "chroot /data/local/debian /bin/bash --login -c '$command'"
-
-        // Run the command as root to ensure we have the necessary permissions.
-        runCommand(chrootCommand, asRoot = true)
-
-        Log.d("MainActivity", "Running command in Debian: $command")
+    /**
+     * Helper to explicitly run an Android command, bypassing the environment toggle.
+     * Used internally for tasks like booting Debian.
+     */
+    private fun executeAndroidCommand(command: String, asRoot: Boolean) {
+        val previousEnvironment = currentEnvironment
+        setEnvironment(ExecutionEnvironment.ANDROID) // Temporarily switch
+        runCommand(command, asRoot)
+        setEnvironment(previousEnvironment) // Switch back
     }
 
+
+    /**
+     * Clears the command history.
+     */
     fun clearHistory() {
         history.clear()
-        _liveHistory.postValue(history.toList())  // Update the live history
+        _liveHistory.postValue(history.toList())
+        Log.d("TerminalWrapper", "Command history cleared.")
+    }
+
+    // --- Private Helpers ---
+
+    /**
+     * Adds an entry to the history and updates LiveData. Runs on the caller's thread.
+     * Should be called from the background thread within runCommand.
+     */
+    private fun addToHistory(cmdOrPrefix: String, result: String, isError: Boolean) {
+        synchronized(history) { // Synchronize access to history list
+            val entry = TerminalEntry(cmdOrPrefix, result, isError)
+            history.add(entry)
+            // Post the update to LiveData (safe to call from background thread)
+            _liveHistory.postValue(history.toList()) // Post a new immutable list
+        }
     }
 }

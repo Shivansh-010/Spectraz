@@ -97,7 +97,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-
     public fun setStagesUpTo(stage: Int, color: Int) {
         val boxes = listOf(
             findViewById<View>(R.id.box0),
@@ -301,7 +300,8 @@ class MainActivity : AppCompatActivity() {
 
         Log.d("MainActivity", "Executing command: $command")
 
-        if (command.trim().equals("bootdebian", ignoreCase = true)) {
+        terminalWrapper.runCommand(command, asRoot = true)
+        /*if (command.trim().equals("bootdebian", ignoreCase = true)) {
             terminalWrapper.bootDebianChroot()
             Log.d("MainActivity", "Debian Boot Initiated")
         } else {
@@ -311,7 +311,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 terminalWrapper.runCommand(command, asRoot = true)
             }
-        }
+        }*/
     }
 
     fun getStageColor(stage: Int): Int {
