@@ -103,23 +103,36 @@ class MainActivity : AppCompatActivity() {
         )
 
         val glow = AnimationUtils.loadAnimation(this, R.anim.glow)
+        val defaultOffColor = "#222222".toColorInt() // Define the off color
 
-        // Mark this stage as activated
+        // 1. Update the color map: Store the color for the current stage
         stageColors[stage] = color
 
-        boxes.forEachIndexed { index, view ->
-            view.clearAnimation()
+        // 2. Clean up the color map: Remove entries for stages after the current one.
+        //    Iterate over a copy of keys to avoid ConcurrentModificationException
+        val keysToRemove = stageColors.keys.filter { it > stage }
+        keysToRemove.forEach { stageColors.remove(it) }
 
-            if (stageColors.containsKey(index)) {
-                val boxColor = stageColors[index] ?: "#222222".toColorInt()
+        // Update the UI based on the current target 'stage'
+        boxes.forEachIndexed { index, view ->
+            view.clearAnimation() // Clear any previous animation
+
+            if (index <= stage) {
+                // This box should be ON.
+                // Get its color from the map (it should exist for index <= stage).
+                // Use defaultOffColor as a fallback just in case, though ideally not needed.
+                val boxColor = stageColors[index] ?: defaultOffColor
                 view.setBackgroundColor(boxColor)
 
-                // Only animate the most recently lit stage
+                // Only animate the *most recently activated* stage (the target 'stage')
                 if (index == stage) {
                     view.startAnimation(glow)
                 }
             } else {
-                view.setBackgroundColor("#222222".toColorInt())
+                // This box should be OFF.
+                view.setBackgroundColor(defaultOffColor)
+                // Ensure stage color entry is removed (already done above, but double ensures consistency)
+                // stageColors.remove(index) // This is redundant now due to the cleanup step above
             }
         }
     }
@@ -244,7 +257,6 @@ class MainActivity : AppCompatActivity() {
             else -> "#222222".toColorInt()
         }
     }
-
 
     fun setStageActive(stage: Int, color: Int) {
         val boxes = listOf(

@@ -1,6 +1,7 @@
 package com.tesseract.spectraz
 
 import android.content.Context
+import android.graphics.Color
 import android.util.Log
 import android.widget.TextView
 import java.io.File
@@ -182,7 +183,6 @@ class ExecutionManager(private val context: Context, private val activity: MainA
 
         // Step 5: Final command output
         commandVerifier.onResponseReceived.observeForever { response ->
-            activity.setStagesUpTo(4, activity.getStageColor(4))
             onModelResponse("CommandVerifier", response)
             lastModelResponse = "commandVerifier\n$response"
             jsonView.setText(lastModelResponse)
@@ -194,8 +194,10 @@ class ExecutionManager(private val context: Context, private val activity: MainA
                 val result = jsonObject.optString("verification_result", "")
 
                 if (result == "success") {
+                    activity.setStagesUpTo(4, activity.getStageColor(4))
                     onFinalCommand?.invoke(cleanedJson)
                 } else {
+                    activity.setStagesUpTo(4, Color.RED) // Indicate error in verification
                     val reason = jsonObject.optString("reason", "Unknown verification failure.")
                     Log.e("ExecutionManager", "Verification failed: $reason")
 
