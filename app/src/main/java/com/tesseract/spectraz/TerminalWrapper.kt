@@ -78,6 +78,39 @@ class TerminalWrapper {
         }.start()
     }
 
+    fun isCommandForDebian(command: String): Boolean {
+        val lower = command.trim().lowercase()
+
+        return listOf(
+            "apt", "dpkg", "python", "pip", "systemctl", "bash", "service",
+            "wget", "curl", "ls", "pwd", "whoami", "nano", "vim", "python3"
+        ).any { lower.startsWith(it) || lower.contains(" $it ") }
+    }
+
+    fun runSmartCommand(command: String) {
+        val trimmed = command.trim()
+
+        when {
+            trimmed.startsWith("\$android:") -> {
+                runCommand(trimmed.removePrefix("\$android:").trim(), asRoot = true)
+            }
+
+            trimmed.startsWith("\$debian:") -> {
+                val chrootCommand = "chroot /data/local/debian /bin/bash --login -c '${trimmed.removePrefix("\$debian:").trim()}'"
+                runCommand(chrootCommand, asRoot = true)
+            }
+
+            isCommandForDebian(trimmed) -> {
+                val chrootCommand = "chroot /data/local/debian /bin/bash --login -c '$trimmed'"
+                runCommand(chrootCommand, asRoot = true)
+            }
+
+            else -> {
+                runCommand(trimmed, asRoot = true)
+            }
+        }
+    }
+
     fun runCommandWithTermuxEnv(command: String, asRoot: Boolean = false) {
         Thread {
             try {

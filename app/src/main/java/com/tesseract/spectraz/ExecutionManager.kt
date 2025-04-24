@@ -57,6 +57,7 @@ class ExecutionManager(private val context: Context) {
             }
         }
 
+        // this will work when tagname is TaG and filename is "tAg"
         // Step 2: Tagger to CommandGenerator with Context Injection
         tagger.onResponseReceived.observeForever { response ->
             onModelResponse("Tagger", response)
@@ -87,13 +88,29 @@ class ExecutionManager(private val context: Context) {
                         }
                     }
 
-                    // 2) read all docs
+                    // 2) read all docs (ensuring lowercase consistency)
                     val docsJson = JSONArray()
                     tagList.forEach { tagName ->
+                        // Normalize the tag name to lowercase.
+                        val normalizedTagName = tagName.lowercase()
+                        // Build the expected file name in lowercase.
+                        val expectedFileName = "$normalizedTagName.md"
                         val docPath =
-                            "/storage/emulated/0/Documents/Obsidian_Live/_KnowledgeBase/DataFiles/Documentation/$tagName.md"
-                        val docContent = readFileWithRoot(docPath)
-                        docsJson.put(docContent)
+                            "/storage/emulated/0/Documents/Obsidian_Live/_KnowledgeBase/DataFiles/Documentation/$expectedFileName"
+
+                        // Create a File instance so we can verify the file's name.
+                        val docFile = File(docPath)
+                        if (docFile.exists()) {
+                            // Compare the lowercased file name with the expected file name.
+                            if (docFile.name.lowercase() == expectedFileName) {
+                                val docContent = readFileWithRoot(docPath)
+                                docsJson.put(docContent)
+                            } else {
+                                Log.e("DocConsistency", "Mismatch: tag [$normalizedTagName] vs file name [${docFile.name.lowercase()}]")
+                            }
+                        } else {
+                            Log.e("DocConsistency", "File not found: $docPath")
+                        }
                     }
 
                     // 3) remove old fields & inject docs array

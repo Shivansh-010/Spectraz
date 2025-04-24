@@ -8,11 +8,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import android.Manifest
 import android.content.Context
+import android.graphics.Color
 import android.text.InputType
+import android.view.View
 import androidx.core.app.ActivityCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.json.JSONObject
 import com.tesseract.spectraz.TerminalNative
+import androidx.core.graphics.toColorInt
+import android.view.animation.AnimationUtils
+import androidx.core.graphics.toColorInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -77,6 +82,9 @@ class MainActivity : AppCompatActivity() {
                 inputField.requestFocus() // Request focus back on the input field
             }
         }
+
+        // testAllBoxes()
+
     }
 
     override fun onRequestPermissionsResult(
@@ -185,4 +193,51 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    fun testAllBoxes() {
+        val boxes = listOf(
+            findViewById<View>(R.id.box0),
+            findViewById<View>(R.id.box1),
+            findViewById<View>(R.id.box2),
+            findViewById<View>(R.id.box3),
+            findViewById<View>(R.id.box4),
+            findViewById<View>(R.id.box5)
+        )
+
+        val colors = listOf(
+            Color.RED, Color.GREEN, Color.BLUE,
+            Color.YELLOW, Color.MAGENTA, Color.CYAN, Color.BLUE
+        )
+
+        boxes.forEachIndexed { index, _ ->
+            setStageActive(index, colors[index])
+        }
+
+    }
+
+
+    fun setStageActive(stage: Int, color: Int) {
+        val boxes = listOf(
+            findViewById<View>(R.id.box0),
+            findViewById<View>(R.id.box1),
+            findViewById<View>(R.id.box2),
+            findViewById<View>(R.id.box3),
+            findViewById<View>(R.id.box4),
+            findViewById<View>(R.id.box5)
+        )
+
+        val glow = AnimationUtils.loadAnimation(this, R.anim.glow)
+
+        boxes.forEachIndexed { index, view ->
+            view.clearAnimation()
+
+            if (index == stage) {
+                view.setBackgroundColor(color)
+                view.startAnimation(glow)
+            } else {
+                view.setBackgroundColor("#222222".toColorInt())
+            }
+        }
+    }
+
+
 }
