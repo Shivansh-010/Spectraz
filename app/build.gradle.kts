@@ -52,6 +52,8 @@ android {
 
 dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("com.google.android.material:material:1.1.0-alpha09")
+    implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.core:core-ktx:1.7.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

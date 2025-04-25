@@ -1,9 +1,14 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
-    android:background="#000"
+    android:background="@color/black"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="8dp">
+    android:padding="8dp"
+    tools:context=".MainActivity">
+
+    <!-- Stage Indicator -->
     <LinearLayout
         android:id="@+id/stageIndicator"
         android:layout_width="match_parent"
@@ -12,7 +17,7 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="8dp"
         android:padding="2dp"
-        android:background="#111">
+        android:background="@color/black">
 
         <View
             android:id="@+id/box0"
@@ -20,7 +25,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginEnd="2dp"
-            android:background="#222" />
+            android:background="@color/black" />
 
         <View
             android:id="@+id/box1"
@@ -28,7 +33,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginEnd="2dp"
-            android:background="#222" />
+            android:background="@color/black" />
 
         <View
             android:id="@+id/box2"
@@ -36,7 +41,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginEnd="2dp"
-            android:background="#222" />
+            android:background="@color/black" />
 
         <View
             android:id="@+id/box3"
@@ -44,7 +49,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginEnd="2dp"
-            android:background="#222" />
+            android:background="@color/black" />
 
         <View
             android:id="@+id/box4"
@@ -52,22 +57,23 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginEnd="2dp"
-            android:background="#222" />
+            android:background="@color/black" />
 
         <View
             android:id="@+id/box5"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:background="#222" />
+            android:background="@color/black" />
     </LinearLayout>
 
+    <!-- JSON View -->
     <ScrollView
         android:layout_width="400dp"
         android:layout_height="244dp"
         android:layout_weight="1">
 
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/jsonView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -75,67 +81,98 @@
             android:text="JSON View" />
     </ScrollView>
 
+    <!-- Command View (Initially Hidden) -->
     <ScrollView
         android:layout_width="400dp"
         android:layout_height="267dp"
         android:layout_weight="1"
         android:visibility="gone">
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/commandView"
             android:visibility="visible"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            style="@style/Widget.MaterialComponents.TextView"
             android:text="TextView" />
     </ScrollView>
 
+    <!-- Terminal View -->
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
-        android:layout_height="313dp"
+        android:layout_height="323dp"
         android:layout_weight="1">
 
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/terminalView"
+            style="@style/Widget.MaterialComponents.TextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:lineSpacingExtra="4dp"
             android:padding="4dp"
             android:textColor="#0f0"
             android:textIsSelectable="true"
-            android:textSize="10sp"
+            android:textSize="7sp"
             android:typeface="monospace" />
     </ScrollView>
 
-    <EditText
-        android:id="@+id/inputField"
+    <!-- Input Field -->
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
-        android:layout_height="37dp"
-        android:background="#222"
-        android:hint="Enter command"
-        android:imeOptions="actionDone"
-        android:inputType="text"
-        android:textColor="#fff"
-        android:typeface="monospace" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-    <!-- New LinearLayout to hold the buttons side by side -->
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/inputField"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="8dp"
+            android:hint="Enter command"
+            android:imeOptions="actionDone"
+            android:inputType="text"
+            android:lines="1"
+            android:maxLines="5"
+            android:padding="10dp"
+            android:scrollHorizontally="false"
+            android:textColor="#fff"
+            android:textColorHint="#aaa"
+            android:typeface="monospace" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Button Row -->
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="8dp">
+        android:paddingTop="8dp"
+        android:gravity="center">
 
-        <Button
-            android:id="@+id/sendButton"
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/EnvSwitch"
+            style="@style/Widget.Material3.CompoundButton.MaterialSwitch"
             android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:layout_weight="1"
+            android:text=""
+            app:thumbColor="@color/black"
+            app:trackColor="@android:color/darker_gray" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/sendButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="150dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Send Command" />
+            android:text="Execute" />
 
-        <!-- New Button to send message to AI -->
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/sendAiButton"
-            android:layout_width="198dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="166dp"
             android:layout_height="wrap_content"
-            android:text="Send to AI" />
+            android:text="Send to AI" />'
+
     </LinearLayout>
 </LinearLayout>

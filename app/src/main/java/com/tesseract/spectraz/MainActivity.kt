@@ -13,6 +13,7 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
@@ -24,7 +25,7 @@ import org.json.JSONObject
 import com.tesseract.spectraz.TerminalNative
 import androidx.core.graphics.toColorInt
 import android.view.animation.AnimationUtils
-
+import com.google.android.material.materialswitch.MaterialSwitch
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sendButton: Button
     private lateinit var scrollView: ScrollView
     private lateinit var sendAiButton: Button
+    private lateinit var environmentSwitch: MaterialSwitch
 
     private lateinit var executionManager: ExecutionManager
     private lateinit var terminalWrapper: TerminalWrapper
@@ -43,7 +45,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        setTheme(R.style.Theme_Spectraz)
+        // hide top action bar
+        supportActionBar?.hide()
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
@@ -60,7 +64,8 @@ class MainActivity : AppCompatActivity() {
         sendButton = findViewById(R.id.sendButton)
         scrollView = findViewById(R.id.scrollView)
         sendAiButton = findViewById(R.id.sendAiButton)
-
+        environmentSwitch = findViewById<MaterialSwitch>(R.id.EnvSwitch)
+        val isEnvironmentEnabled = environmentSwitch.isChecked
 
         // After Initializing jsonView
         initExecutionManager()
@@ -92,9 +97,15 @@ class MainActivity : AppCompatActivity() {
                 inputField.requestFocus() // Request focus back on the input field
             }
         }
+        val environmentSwitch = findViewById<MaterialSwitch>(R.id.EnvSwitch)
 
-        // testPipelineStages()
-
+        environmentSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                terminalWrapper.setEnvironment(ExecutionEnvironment.DEBIAN);
+            } else {
+                terminalWrapper.setEnvironment(ExecutionEnvironment.ANDROID);
+            }
+        }
     }
 
     public fun setStagesUpTo(stage: Int, color: Int) {
