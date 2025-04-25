@@ -8,21 +8,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import android.Manifest
 import android.content.Context
-import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
-import android.os.Environment
-import android.os.Handler
-import android.os.Looper
 import android.text.InputType
 import android.util.TypedValue
 import android.view.View
 import androidx.core.app.ActivityCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.json.JSONObject
-import com.tesseract.spectraz.TerminalNative
 import androidx.core.graphics.toColorInt
 import android.view.animation.AnimationUtils
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -65,7 +60,7 @@ class MainActivity : AppCompatActivity() {
         scrollView = findViewById(R.id.scrollView)
         sendAiButton = findViewById(R.id.sendAiButton)
         environmentSwitch = findViewById<MaterialSwitch>(R.id.EnvSwitch)
-        val isEnvironmentEnabled = environmentSwitch.isChecked
+        // val isEnvironmentEnabled = environmentSwitch.isChecked
 
         // After Initializing jsonView
         initExecutionManager()
@@ -147,7 +142,7 @@ class MainActivity : AppCompatActivity() {
                 // This box should be ON (glowing square)
                 val boxColor = stageColors[index] ?: defaultOffColor // Should always find a color here now
 
-                // **Create the square glow drawable dynamically using LayerDrawable**
+                // Create the square glow drawable dynamically using LayerDrawable
                 val squareGlowDrawable = createSquareGlowDrawable(
                     boxColor,
                     defaultOffColor,
@@ -312,17 +307,6 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "Executing command: $command")
 
         terminalWrapper.runCommand(command, asRoot = true)
-        /*if (command.trim().equals("bootdebian", ignoreCase = true)) {
-            terminalWrapper.bootDebianChroot()
-            Log.d("MainActivity", "Debian Boot Initiated")
-        } else {
-            if (terminalWrapper.isDebianRunning) {
-                // val chrootCommand = "chroot /data/local/debian /bin/bash -c '$command'"
-                terminalWrapper.runInDebian(command)
-            } else {
-                terminalWrapper.runCommand(command, asRoot = true)
-            }
-        }*/
     }
 
     fun getStageColor(stage: Int): Int {

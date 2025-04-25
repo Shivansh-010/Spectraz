@@ -41,11 +41,6 @@ class TerminalWrapper {
         // Boot Debian first
         bootDebianChroot() // This runs asynchronously
 
-        // **Crucially, set the initial directory *after* boot is likely started**
-        // We'll attempt the 'cd /home' and update our tracked state.
-        // Run this *synchronously relative to other commands* but it still uses a bg thread.
-        // Best practice might involve a callback or delayed execution,
-        // but this is simpler for now.
         runCommand("cd /home") // Attempt initial cd
     }
 
