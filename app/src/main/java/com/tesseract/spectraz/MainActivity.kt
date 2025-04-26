@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var terminalWrapper: TerminalWrapper
 
     private var RunThroughOrchestrator: Boolean = false
+    var TerminalRelay: Boolean = false
 
     // Cache of active stages and their colors
     val stageColors = mutableMapOf<Int, Int>()
@@ -72,6 +73,12 @@ class MainActivity : AppCompatActivity() {
         terminalWrapper.liveHistory.observe(this, { history ->
             history.forEach { entry ->
                 terminalView.append("${entry.command}\n${entry.output}\n")
+
+                // Relay to orchestrator Model
+                if(TerminalRelay){
+                    executionManager.orchestratorModel.sendMessage("${entry.command}\n${entry.output}\n")
+                }
+
                 scrollView.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
             }
         })
@@ -104,9 +111,9 @@ class MainActivity : AppCompatActivity() {
 
         environmentSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                terminalWrapper.setEnvironment(ExecutionEnvironment.DEBIAN);
-            } else {
                 terminalWrapper.setEnvironment(ExecutionEnvironment.ANDROID);
+            } else {
+                terminalWrapper.setEnvironment(ExecutionEnvironment.DEBIAN);
             }
         }
     }
