@@ -23,6 +23,7 @@ class ExecutionManager(private val context: Context, private val activity: MainA
     val commandGenerator = CommandGeneratorModel(context)
     val commandConsolidator = CommandConsolidatorModel(context)
     val commandVerifier = CommandVerifierModel(context)
+    val orchestratorModel = OrchestratorModel(context)
 
     private lateinit var jsonView: TextView
 
@@ -59,7 +60,7 @@ class ExecutionManager(private val context: Context, private val activity: MainA
             }
         }
 
-        // this will work when tagname is TaG and filename is "tAg"
+        // this will also work when tagname is TaG and filename is "tAg"
         // Step 2: Tagger to CommandGenerator with Context Injection
         tagger.onResponseReceived.observeForever { response ->
             activity.setStagesUpTo(1, activity.getStageColor(1))
@@ -337,6 +338,7 @@ class ExecutionManager(private val context: Context, private val activity: MainA
         modelConfigs["CommandGenerator"]?.let { configureModel(commandGenerator, it) }
         modelConfigs["CommandConsolidator"]?.let { configureModel(commandConsolidator, it) }
         modelConfigs["CommandVerifier"]?.let { configureModel(commandVerifier, it) }
+        modelConfigs["Orchestrator"]?.let { configureModel(orchestratorModel, it) }
     }
 
     // Additional functions to process queries and route through the pipeline can be added here.
