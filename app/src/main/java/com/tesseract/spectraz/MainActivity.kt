@@ -34,6 +34,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var executionManager: ExecutionManager
     private lateinit var terminalWrapper: TerminalWrapper
+
+    private var RunThroughOrchestrator: Boolean = false
+
     // Cache of active stages and their colors
     val stageColors = mutableMapOf<Int, Int>()
 
@@ -76,7 +79,12 @@ class MainActivity : AppCompatActivity() {
         sendButton.setOnClickListener {
             val command = inputField.text.toString()
             if (command.isNotEmpty()) {
-                executeCommandInTerminal(command)
+                if(RunThroughOrchestrator){
+                    executionManager.orchestratorModel.sendMessage(command)
+                } else {
+                    executeCommandInTerminal(command)
+                }
+
                 inputField.setText("")
                 inputField.requestFocus()
             }
@@ -208,7 +216,6 @@ class MainActivity : AppCompatActivity() {
             context.resources.displayMetrics
         )
     }
-
 
     override fun onRequestPermissionsResult(
         requestCode: Int,

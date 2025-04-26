@@ -225,6 +225,10 @@ class ExecutionManager(private val context: Context, private val activity: MainA
                 Log.e("ExecutionManager", "Error parsing verifier response: ${e.message}")
             }
         }
+
+        orchestratorModel.onResponseReceived.observeForever { response ->
+            
+        }
     }
 
     fun cleanAndExtractJson(input: String): String? {
